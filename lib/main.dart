@@ -1,128 +1,31 @@
-import 'dart:isolate';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'DateTimePicker.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() => runApp(MyApp());
 
+void main() async{
 
+  runApp(MyApp());
+}
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   // This widget is the root of your application.
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home:Home(),
+      home:MainScreen(),
     );
   }
 }
-class Home extends StatelessWidget {
-  const Home({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar:AppBar(
-        title:Text("Remind Me"),
-        backgroundColor:Colors.green[600],
-      ),
-      body:Center(
-        child:Column(
-            mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.center,
-            children: <Widget>[
-              Container(
-
-                child:ElevatedButton(
-                  onPressed: (){
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context)=>LoginScreen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.green[600],
-                    padding:EdgeInsets.symmetric(horizontal:25.0,vertical:5.0),
-                  ),
-                  child: Text('Login'),
-                ),
-              ),
-
-            ]
-        ),
-      ),
-    );
-  }
-}
-
-
-
-
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
-
-  @override
-  _LoginScreenState createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final  myController = TextEditingController();
-  final myController2 = TextEditingController();
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar:AppBar(
-        title:Text("Remind Me"),
-        backgroundColor:Colors.green[600],
-      ),
-      body:Center(
-        child:Column(
-            mainAxisAlignment:MainAxisAlignment.center,
-            crossAxisAlignment:CrossAxisAlignment.center,
-            children: <Widget>[
-              Container(
-                padding:EdgeInsets.symmetric(horizontal:15.0,vertical:5.0),
-                child:TextField(
-                  controller: myController,
-                  decoration:InputDecoration(
-                    labelText:'Enter Email',
-                  ),
-
-                ),
-              ),
-              Container(
-                padding:EdgeInsets.symmetric(horizontal:15.0,vertical:5.0),
-                child:TextField(
-                  controller: myController2,
-                  decoration:InputDecoration(
-                    labelText:'Enter Password',
-                  ),
-                ),
-              ),
-              Container(
-
-                child:ElevatedButton(
-                  onPressed: (){
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context)=>MainScreen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.green[600],
-                    padding:EdgeInsets.symmetric(horizontal:25.0,vertical:5.0),
-                  ),
-                  child: Text('Login'),
-                ),
-              ),
-            ]
-        ),
-      ),
-    );
-  }
-}
-
-
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -137,6 +40,16 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   final cardController2 = TextEditingController();
   final _dateController = TextEditingController();
   final _timeController = TextEditingController();
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
+
+  initializeNotifications() async {
+    var initializeAndroid = AndroidInitializationSettings('ic_launcher');
+    var initializeIOS = IOSInitializationSettings();
+    var initSettings = InitializationSettings(initializeAndroid, initializeIOS);
+    await flutterLocalNotificationsPlugin.initialize(initSettings);
+  }
+
 
   List<CardView> dynamicWidget =[];
   var fabIndex;
@@ -151,7 +64,28 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     super.initState();
     _tabController = new TabController(length: 3, vsync: this, initialIndex: 0);
     _tabController.addListener(updateIndex);
-    fabIndex = 0;}
+    fabIndex = 0;
+    initializeNotifications();
+
+  }
+  Future singleNotification(
+      DateTime datetime, String message, String subtext, int hashcode,
+      {String? sound}) async {
+    var androidChannel = AndroidNotificationDetails(
+      'channel-id',
+      'channel-name',
+      'channel-description',
+      importance: Importance.Max,
+      priority: Priority.Max,
+    );
+
+  var iosChannel = IOSNotificationDetails();
+  var platformChannel = NotificationDetails(androidChannel, iosChannel);
+  flutterLocalNotificationsPlugin.schedule(
+  hashcode, message, subtext, datetime, platformChannel,
+  payload: hashcode.toString());
+}
+
   void removeCard(index)
   {
     setState(() {
@@ -216,9 +150,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     {
                       Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => DateTimePicker(_dateController,_timeController,addDynamic)));
-                      Navigator.pop(context);
-                    },
+                          MaterialPageRoute(builder: (context) => DateTimePicker(_dateController,_timeController,addDynamic,singleNotification,cardController1)));
+                      },
                     child: Text('Continue'),
                   ),
                 ],
@@ -293,15 +226,18 @@ class CardView extends StatelessWidget {
     return Card(
       child:Column(
         children:<Widget>[
-          ListTile(
+          _Description(
             title: Text(
               cardCont1.text,
             ),
-            subtitle: Text(
+            description: Text(
               cardCont2.text,
             ),
-            trailing: Text(
+            date: Text(
               dateController.text,
+            ),
+            time: Text(
+              timeController.text,
             ),
           ),
           Container(
@@ -320,12 +256,75 @@ class CardView extends StatelessWidget {
     );
   }
 }
-class FunctionClass extends StatelessWidget {
-  const FunctionClass({Key? key}) : super(key: key);
+class CustomListItem extends StatelessWidget {
+  const CustomListItem({
+    Key? key,
+    required this.date,
+    required this.time,
+  }) : super(key: key);
+  final Widget date;
+  final Widget time;
 
   @override
   Widget build(BuildContext context) {
-    return Container();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Expanded(
+              flex: 2,
+              child: date,
+            ),
+            Expanded(
+              flex: 3,
+              child: time,
+            ),
+
+
+        ],
+      ),
+    );
+  }
+}
+
+class _Description extends StatelessWidget {
+  const _Description({
+    Key? key,
+    required this.title,
+    required this.description,
+    required this.date,
+    required this.time,
+  }) : super(key: key);
+
+  final Widget title;
+  final Widget description;
+  final Widget date;
+  final Widget time;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(5.0, 0.0, 0.0, 0.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            child: title,),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 2.0)),
+         Container(
+            child:description,
+          ),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 1.0)),
+          Container(
+            child:CustomListItem(
+              date: date,
+                time:time,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
