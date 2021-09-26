@@ -1,13 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'DateTimePicker.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
 
 void main() async{
-
   runApp(MyApp());
 }
 
@@ -40,8 +39,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   final cardController2 = TextEditingController();
   final _dateController = TextEditingController();
   final _timeController = TextEditingController();
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+
+
 
   initializeNotifications() async {
     var initializeAndroid = AndroidInitializationSettings('ic_launcher');
@@ -50,6 +49,26 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     await flutterLocalNotificationsPlugin.initialize(initSettings);
   }
 
+
+  Future singleNotification(
+      DateTime datetime, String message, String subtext, int hashcode,
+      {String? sound}) async {
+    var androidChannel = AndroidNotificationDetails(
+      'channel-id',
+      'channel-name',
+      'channel-description',
+      playSound: false,
+      sound: RawResourceAndroidNotificationSound('alarm_clock'),
+      importance: Importance.Max,
+      priority: Priority.Max,
+    );
+
+    var iosChannel = IOSNotificationDetails();
+    var platformChannel = NotificationDetails(androidChannel, iosChannel);
+    flutterLocalNotificationsPlugin.schedule(
+        hashcode, message, subtext, datetime, platformChannel,
+        payload: hashcode.toString());
+  }
 
   List<CardView> dynamicWidget =[];
   var fabIndex;
@@ -68,23 +87,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     initializeNotifications();
 
   }
-  Future singleNotification(
-      DateTime datetime, String message, String subtext, int hashcode,
-      {String? sound}) async {
-    var androidChannel = AndroidNotificationDetails(
-      'channel-id',
-      'channel-name',
-      'channel-description',
-      importance: Importance.Max,
-      priority: Priority.Max,
-    );
-
-  var iosChannel = IOSNotificationDetails();
-  var platformChannel = NotificationDetails(androidChannel, iosChannel);
-  flutterLocalNotificationsPlugin.schedule(
-  hashcode, message, subtext, datetime, platformChannel,
-  payload: hashcode.toString());
-}
 
   void removeCard(index)
   {
