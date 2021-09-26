@@ -2,14 +2,17 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:date_format/date_format.dart';
 import 'package:intl/intl.dart';
-
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 
 class DateTimePicker extends StatefulWidget {
-  const DateTimePicker(this._dateController,this._timeController,this.addDynamic, {Key? key}) : super(key: key);
+  const DateTimePicker(this._dateController,this._timeController,this.addDynamic,this.singleNotification,this.title, {Key? key}) : super(key: key);
   final TextEditingController _dateController;
   final TextEditingController _timeController;
   final Function addDynamic;
+  final Function singleNotification;
+  final TextEditingController title;
+
   @override
   _DateTimePickerState createState() => _DateTimePickerState();
 }
@@ -17,16 +20,10 @@ class DateTimePicker extends StatefulWidget {
 class _DateTimePickerState extends State<DateTimePicker> {
   late double _height = 0;
   late double _width= 0;
-
-
   late String _hour, _minute, _time;
   late String dateTime;
-
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay(hour:00, minute:00);
-
-
-
   Future<Null> _selectDate(BuildContext context) async{
     final DateTime? picked = await showDatePicker(
         context: context,
@@ -57,6 +54,7 @@ class _DateTimePickerState extends State<DateTimePicker> {
         ).toString();
       });
   }
+
   @override
   void initState(){
     widget._dateController.text = DateFormat.yMd().format(DateTime.now());
@@ -152,7 +150,15 @@ class _DateTimePickerState extends State<DateTimePicker> {
                 Container(
                   child:ElevatedButton(
                     onPressed: ()
-                    {
+                    async { DateTime now = DateTime(selectedDate.year,selectedDate.month,selectedDate.day,selectedTime.hour,selectedTime.minute).toUtc().add(
+                      Duration(seconds: 10),
+                    );
+                    await widget.singleNotification(
+                         now,
+                        "Notification",
+                        widget.title.text,
+                        98123871,
+                    );
                       Navigator.of(context).pop(
                           {"dateController":widget._dateController,"timeController":widget._timeController}
                       );
